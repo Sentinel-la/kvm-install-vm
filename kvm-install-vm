@@ -23,6 +23,8 @@ function usage {
     echo "DISTRIBUTIONS"
     echo " - centos7"
     echo " - centos6"
+    echo " - rhel7"
+    echo " - ubuntu8"
     echo ""
     echo "EXAMPLES"
     echo ""
