@@ -7,13 +7,14 @@ function usage {
     echo "usage: $prog [OPTIONS] [-n vmname] [-r vmname]"
     echo ""
     echo "OPTIONS"
-    echo "  -c          Number of vCPUs     (default: 1)"
-    echo "  -m          Memory Size (MB)    (default: 1024)"
-    echo "  -d          Disk Size (GB)      (default: 10)"
-    echo "  -t          Linux Distribution  (default: centos7)"
-    echo "  -l          Location of Images  (default: $HOME/virt/images)"
-    echo "  -k          SSH Public Key      (default: $HOME/.ssh/id_rsa.pub)"
-    echo "  -b          Bridge              (default: virbr0)"
+    echo "  -c          Number of vCPUs                            (default: 1)"
+    echo "  -m          Memory Size (MB)                           (default: 1024)"
+    echo "  -d          Disk Size (GB)                             (default: 10)"
+    echo "  -t          Linux Distribution                         (default: centos7)"
+    echo "  -l          Location of Images                         (default: $HOME/virt/images)"
+    echo "  -k          SSH Public Key                             (default: $HOME/.ssh/id_rsa.pub)"
+    echo "  -b          Primary Bridge                             (default: virbr0)"
+    echo "  -B          Additional Bridges (comma separated list)  (default: '')"
     echo "  -h          Display help"
     echo "  -i          Custom QCOW2 Image"
     echo "  -n vmname   Name of VM to create"
@@ -49,6 +50,7 @@ DISK_SIZE=10                    # Disk Size in GB
 RESIZE_DISK=false               # Resize disk (boolean)
 IMAGEDIR=${HOME}/virt/images    # Directory to store images
 BRIDGE=virbr0                   # Hypervisor bridge
+ADDITIONAL_BRIDGES=''           # Additional bridges
 PUBKEY=${HOME}/.ssh/id_rsa.pub  # SSH public key
 DISTRO=centos7                  # Distribution
 
@@ -56,7 +58,7 @@ DISTRO=centos7                  # Distribution
 # Parse command line arguments
 #--------------------------------------------------
 
-while getopts ":c:m:d:t:l:k:b:n:r:i:h" opt; do
+while getopts ":c:m:d:t:l:k:b:B:n:r:i:h" opt; do
     case "$opt" in
         c   ) CPUS="${OPTARG}" ;;
         m   ) MEMORY="${OPTARG}" ;;
@@ -65,6 +67,7 @@ while getopts ":c:m:d:t:l:k:b:n:r:i:h" opt; do
         n   ) VMNAME="${OPTARG}" ;;
         k   ) PUBKEY="${OPTARG}" ;;
         b   ) BRIDGE="${OPTARG}" ;;
+        B   ) ADDITIONAL_BRIDGES="${OPTARG}" ;;
         i   ) IMAGE="${OPTARG}" ;;
         r   ) VMDEL="${OPTARG}" ;;
         d   )
@@ -121,6 +124,7 @@ function fetch_images {
     case "$DISTRO" in
         centos7 ) QCOW=CentOS-7-x86_64-GenericCloud.qcow2 ;;
         centos6 ) QCOW=CentOS-6-x86_64-GenericCloud.qcow2 ;;
+        rhel7 ) QCOW=rhel-server-7.4-x86_64-kvm.qcow2 ;;
         debian8 ) QCOW=debian-8-20170521-openstack-amd64.qcow2 ;;
         *       ) usage; exit 2 ;;
     esac
@@ -146,6 +150,16 @@ function fetch_images {
         then
             echo "$(date -R) Cloud image not found.  Downloading..."
             wget -P ${IMAGEDIR} ${CENTOS6_URL}/${QCOW}
+        fi
+    elif [ "${DISTRO}" == "rhel7" ]
+    then
+        OS_VARIANT="rhel7"
+        RHEL7_URL=https://storage.googleapis.com/sentinella-openstack-images
+        LOGIN_USER=cloud-user
+        if [ ! -f ${IMAGEDIR}/${QCOW} ]
+        then
+            echo "$(date -R) Cloud image not found.  Downloading..."
+            wget -P ${IMAGEDIR} ${RHEL7_URL}/${QCOW}
         fi
     elif [ "${DISTRO}" == "debian8" ]
     then
@@ -258,30 +272,31 @@ _EOF_
 
     echo "$(date -R) Installing the domain and adjusting the configuration..."
     echo "[INFO] Installing with the following parameters:"
-    echo "    virt-install \\"
-    echo "      --import \\"
-    echo "      --name ${VMNAME} \\"
-    echo "      --ram ${MEMORY} \\"
-    echo "      --vcpus ${CPUS} \\"
-    echo "      --disk $DISK,format=qcow2,bus=virtio \\"
-    echo "      --disk $CI_ISO,device=cdrom \\"
-    echo "      --network bridge=${BRIDGE},model=virtio \\"
-    echo "      --os-type=linux \\"
-    echo "      --os-variant=${OS_VARIANT} \\"
-    echo "      --graphics none \\"
-    echo "      --noautoconsole "
 
-    virt-install --import \
-        --name ${VMNAME} \
-        --ram ${MEMORY} \
-        --vcpus ${CPUS} \
-        --disk $DISK,format=qcow2,bus=virtio \
-        --disk $CI_ISO,device=cdrom \
-        --network bridge=${BRIDGE},model=virtio \
-        --os-type=linux \
-        --os-variant=${OS_VARIANT} \
-        --graphics none \
-        --noautoconsole
+    the_command="virt-install"
+    the_command="$the_command --import"
+    the_command="$the_command --name ${VMNAME}"
+    the_command="$the_command --ram ${MEMORY}"
+    the_command="$the_command --vcpus ${CPUS}"
+    the_command="$the_command --disk $DISK,format=qcow2,bus=virtio"
+    the_command="$the_command --disk $CI_ISO,device=cdrom"
+    the_command="$the_command --network bridge=${BRIDGE},model=virtio"
+
+    IFS=',' read -a additional_bridges <<< "${ADDITIONAL_BRIDGES}"    
+
+    for i in "${additional_bridges[@]}"
+    do     
+       the_command="$the_command --network bridge=$i,model=virtio"
+    done
+
+    the_command="$the_command --os-type=linux"
+    the_command="$the_command --os-variant=${OS_VARIANT}"
+    the_command="$the_command --graphics none"
+    the_command="$the_command --noautoconsole"
+
+    echo "$the_command"
+
+    eval $the_command
 
     RET=$?
     if [ "$RET" -ne 0 ]; then
@@ -297,7 +312,8 @@ _EOF_
     # Remove the unnecessary cloud init files
     rm $USER_DATA $META_DATA $CI_ISO
 
-    MAC=$(virsh dumpxml ${VMNAME} | awk -F\' '/mac address/ {print $2}')
+    #MAC=$(virsh dumpxml ${VMNAME} | awk -F\' '/mac address/ {print $2}')
+    MAC=$(virsh domiflist ${VMNAME} | grep ${BRIDGE} | awk '{print $5}')
     while true
     do
         IP=$(grep -B1 $MAC /var/lib/libvirt/dnsmasq/$BRIDGE.status | head \
