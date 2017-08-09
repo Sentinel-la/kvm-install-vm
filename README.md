@@ -10,13 +10,14 @@ Thank you Giovanni!
 
 ```
 OPTIONS
-  -c          Number of vCPUs     (default: 1)
-  -m          Memory Size (MB)    (default: 1024)
-  -d          Disk Size (GB)      (default: 10)
-  -t          Linux Distribution  (default: centos7)
-  -l          Location of Images  (default: /home/sentinella/virt/images)
-  -k          SSH Public Key      (default: /home/sentinella/.ssh/id_rsa.pub)
-  -b          Bridge              (default: virbr0)
+  -c          Number of vCPUs                            (default: 1)
+  -m          Memory Size (MB)                           (default: 1024)
+  -d          Disk Size (GB)                             (default: 10)
+  -t          Linux Distribution                         (default: centos7)
+  -l          Location of Images                         (default: /home/sentinella/virt/images)
+  -k          SSH Public Key                             (default: /home/sentinella/.ssh/id_rsa.pub)
+  -b          Primary Bridge                             (default: virbr0)
+  -B          Additional Bridges (comma separated list)  (default: '')
   -h          Display help
   -i          Custom QCOW2 Image
   -n vmname   Name of VM to create
