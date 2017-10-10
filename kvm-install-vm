@@ -7,14 +7,15 @@ function usage {
     echo "usage: $prog [OPTIONS] [-n vmname] [-r vmname]"
     echo ""
     echo "OPTIONS"
-    echo "  -c          Number of vCPUs                            (default: 1)"
-    echo "  -m          Memory Size (MB)                           (default: 1024)"
-    echo "  -d          Disk Size (GB)                             (default: 10)"
-    echo "  -t          Linux Distribution                         (default: centos7)"
-    echo "  -l          Location of Images                         (default: $HOME/virt/images)"
-    echo "  -k          SSH Public Key                             (default: $HOME/.ssh/id_rsa.pub)"
-    echo "  -b          Primary Bridge                             (default: virbr0)"
-    echo "  -B          Additional Bridges (comma separated list)  (default: '')"
+    echo "  -c          Number of vCPUs                             (default: 1)"
+    echo "  -m          Memory Size (MB)                            (default: 1024)"
+    echo "  -d          Disk Size (GB)                              (default: 10)"
+    echo "  -t          Linux Distribution                          (default: centos7)"
+    echo "  -l          Location of Images                          (default: $HOME/virt/images)"
+    echo "  -k          SSH Public Key                              (default: $HOME/.ssh/id_rsa.pub)"
+    echo "  -b          Primary Bridge                              (default: virbr0)"
+    echo "  -N          Additional Networks (comma separated list)  (default: '')"
+    echo "  -B          Additional Bridges (comma separated list)   (default: '')"
     echo "  -h          Display help"
     echo "  -i          Custom QCOW2 Image"
     echo "  -n vmname   Name of VM to create"
@@ -60,7 +61,7 @@ DISTRO=centos7                  # Distribution
 # Parse command line arguments
 #--------------------------------------------------
 
-while getopts ":c:m:d:t:l:k:b:B:n:r:i:h" opt; do
+while getopts ":c:m:d:t:l:k:b:B:N:n:r:i:h" opt; do
     case "$opt" in
         c   ) CPUS="${OPTARG}" ;;
         m   ) MEMORY="${OPTARG}" ;;
@@ -70,6 +71,7 @@ while getopts ":c:m:d:t:l:k:b:B:n:r:i:h" opt; do
         k   ) PUBKEY="${OPTARG}" ;;
         b   ) BRIDGE="${OPTARG}" ;;
         B   ) ADDITIONAL_BRIDGES="${OPTARG}" ;;
+        N   ) ADDITIONAL_NETWORKS="${OPTARG}" ;;
         i   ) IMAGE="${OPTARG}" ;;
         r   ) VMDEL="${OPTARG}" ;;
         d   )
@@ -289,6 +291,13 @@ _EOF_
     for i in "${additional_bridges[@]}"
     do     
        the_command="$the_command --network bridge=$i,model=virtio"
+    done
+
+    IFS=',' read -a additional_networks <<< "${ADDITIONAL_NETWORKS}"
+
+    for i in "${additional_networks[@]}"
+    do
+       the_command="$the_command --network network=$i,model=virtio"
     done
 
     the_command="$the_command --os-type=linux"
