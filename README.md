@@ -9,15 +9,18 @@ Thank you Giovanni!
 ### Usage
 
 ```
+kvm-install-vm [OPTIONS] [-n vmname] [-r vmname]
+
 OPTIONS
-  -c          Number of vCPUs                            (default: 1)
-  -m          Memory Size (MB)                           (default: 1024)
-  -d          Disk Size (GB)                             (default: 10)
-  -t          Linux Distribution                         (default: centos7)
-  -l          Location of Images                         (default: /home/sentinella/virt/images)
-  -k          SSH Public Key                             (default: /home/sentinella/.ssh/id_rsa.pub)
-  -b          Primary Bridge                             (default: virbr0)
-  -B          Additional Bridges (comma separated list)  (default: '')
+  -c          Number of vCPUs                             (default: 1)
+  -m          Memory Size (MB)                            (default: 1024)
+  -d          Disk Size (GB)                              (default: 10)
+  -t          Linux Distribution                          (default: centos7)
+  -l          Location of Images                          (default: /root/virt/images)
+  -k          SSH Public Key                              (default: /root/.ssh/id_rsa.pub)
+  -b          Primary Bridge                              (default: virbr0)
+  -N          Additional Networks (comma separated list)  (default: '')
+  -B          Additional Bridges (comma separated list)   (default: '')
   -h          Display help
   -i          Custom QCOW2 Image
   -n vmname   Name of VM to create
@@ -27,18 +30,21 @@ DISTRIBUTIONS
  - centos7
  - centos6
  - rhel7
- - debian8
+ - ubuntu8
 
 EXAMPLES
 
 Create VM with default params:
-  ./kvm-install-vm -n foo
+  kvm-install-vm -n foo
 
 Create VM with custom params:
-  ./kvm-install-vm -c 2 -m 2048 -d 20 -n foo
+  kvm-install-vm -c 2 -m 2048 -d 20 -n foo
+
+Create VM in bridge virbr0, adding network mynet:
+  kvm-install-vm -c 2 -m 2048 -d 20 -b virbr0 -N mynet -n foo
 
 Remove (destroy and undefine) a VM:
-  ./kvm-install-vm -r foo
+  kvm-install-vm -r foo
 ```
 
 ### Notes
